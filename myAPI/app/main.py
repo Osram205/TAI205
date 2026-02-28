@@ -1,7 +1,9 @@
 #1. importaciones
 from fastapi import FastAPI, HTTPException
-from typing import Optional
 import asyncio
+from typing import Optional
+from pydantic import BaseModel, Field
+
 
 #2. Inicialización APP
 app= FastAPI(
@@ -17,6 +19,11 @@ usuarios=[
     {"id":"3", "nombre":"Yesenia Pintor", "edad":"23"},
 ]
 
+#Modelo de Validaciones Pydantic
+class crear_usuario(BaseModel):
+    id:int = Field(..., gt=0, description="Identificador de usuario")
+    nombre:str = Field(...,min_length=3, max_length=50, example="Juanita")
+    edad:int = Field(..., ge=1, le=123, description="Edad validad entre 1 y 123")
 
 #3. Endpoints
 @app.get("/", tags=['Inicio'])
@@ -52,9 +59,9 @@ async def consultaT(id:int):
     }
 
 @app.post("/v1/usuarios/{id}", tags=['CRUD HTTP'])
-async def crear_usuario(usuario:dict):
+async def crear_usuario(usuario:crear_usuario):
     for usr in usuarios:
-        if usr ["id"] == usuario.get("id"):
+        if usr ["id"] == usuario.id:
             raise HTTPException(status_code=400,detail="El id ya existe")
     usuarios.append(usuario)
     return{
@@ -62,3 +69,27 @@ async def crear_usuario(usuario:dict):
         "status":"200",
         "usuario":usuario
         }
+
+@app.put("/v1/usuarios/{id}", tags=['CRUD HTTP'])
+async def actualizar_usuario(id: str, usuario_actualizado: dict):
+    for index, usr in enumerate(usuarios):
+        if usr["id"] == id:
+            usuarios[index].update(usuario_actualizado)
+            return {
+                "mensaje": "Usuario actualizado correctamente",
+                "status": "200",
+                "usuario": usuarios[index]
+            }
+    raise HTTPException(status_code=400, detail="Usuario no encontrado")
+
+@app.delete("/v1/usuarios/{id}", tags=['CRUD HTTP'])
+async def eliminar_usuario(id: str):
+    for index, usr in enumerate(usuarios):
+        if usr["id"] == id:
+            usuario_eliminado = usuarios.pop(index)
+            return {
+                "mensaje": "Usuario eliminado correctamente",
+                "status": "200",
+                "usuario_eliminado": usuario_eliminado
+            }
+    raise HTTPException(status_code=400, detail="Usuario no encontrado")
